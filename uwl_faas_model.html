@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Urban Waterway Logistics — FAAS Business Model</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap">
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121833; --ink:#dfe7ff; --muted:#9fb0ff;
+    --accent:#6cf; --accent2:#9f6cff; --good:#11c46a; --bad:#ff6f6f; --line:#26325b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  a{color:var(--accent)}
+  .wrap{max-width:1400px;margin:0 auto;padding:20px}
+  header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:14px}
+  header h1{font-size:20px;margin:0;letter-spacing:.2px}
+  header .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:350px 1fr;gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card h3{font-size:13px;letter-spacing:.2px;color:var(--muted);margin:0;padding:12px;border-bottom:1px solid var(--line)}
+  .body{padding:12px}
+  .row{display:grid;grid-template-columns:1fr 120px;gap:10px;align-items:center;margin:8px 0}
+  .row > label{font-size:12px;color:var(--muted)}
+  .row input[type="number"], .row input[type="text"], .row select{
+    width:100%;padding:8px 10px;border-radius:10px;border:1px solid var(--line);
+    background:#0f1530;color:var(--ink);font-size:13px;outline:none
+  }
+  .row input[type="checkbox"]{transform:scale(1.1)}
+  .row .unit{font-size:12px;color:var(--muted);text-align:right}
+  .btnbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+  button{cursor:pointer;border:1px solid var(--line);background:#0f1530;color:var(--ink);
+    padding:8px 10px;border-radius:10px;font-size:13px}
+  button.primary{background:linear-gradient(135deg,#2f73ff,#7c4dff);border:none}
+  button.ghost{background:transparent}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .kpi{background:#0f1530;border:1px dashed var(--line);border-radius:12px;padding:10px}
+  .kpi .label{font-size:11px;color:var(--muted)}
+  .kpi .val{font-size:18px;margin-top:6px}
+  .val.good{color:var(--good)}
+  .val.bad{color:var(--bad)}
+  .charts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .note{font-size:12px;color:var(--muted);line-height:1.5}
+  .footer{margin-top:14px;font-size:12px;color:var(--muted)}
+  .hr{height:1px;background:var(--line);margin:8px 0}
+  .pill{background:#143054;border:1px solid #265289;color:#b2d8ff;border-radius:999px;padding:3px 8px;font-size:11px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .mono{font-variant-numeric:tabular-nums}
+  canvas{background:#0b1023;border-radius:8px}
+  @media (max-width:1100px){
+    .grid{grid-template-columns:1fr}
+    .charts{grid-template-columns:1fr}
+    .kpis{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Urban Waterway Logistics — <span class="pill">FAAS model</span></h1>
+    <div class="chips">
+      <span class="chip">Ghent pilot</span>
+      <span class="chip">Waypoint → L3 autonomy</span>
+      <span class="chip">R&amp;D + ops + scale-up</span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Inputs -->
+    <div class="card">
+      <h3>Inputs</h3>
+      <div class="body">
+        <div class="row"><label>Currency symbol</label><input id="ccy" type="text" value="€"></div>
+        <div class="row"><label>Horizon (months)</label><input id="months" type="number" value="36" min="6" max="120"></div>
+        <div class="row"><label>Discount rate (annual, %)</label><input id="disc" type="number" value="14" step="0.1"></div>
+
+        <div class="hr"></div>
+        <div class="row"><label>Phase-1 R&amp;D one-off (Step-1)</label><input id="rnd" type="number" value="68000"></div>
+        <div class="two">
+          <div class="row"><label>R&amp;D month (1..N)</label><input id="rndMonth" type="number" value="1"></div>
+          <div class="row"><label>Grant on R&amp;D (%)</label><input id="rndGrantPct" type="number" value="0" step="1"></div>
+        </div>
+
+        <div class="hr"></div>
+        <div class="row"><label>Fleet size (vessels)</label><input id="fleet" type="number" value="1" min="0"></div>
+        <div class="row"><label>CapEx per vessel</label><input id="capexV" type="number" value="300000"></div>
+        <div class="three">
+          <div class="row"><label>CapEx month</label><input id="capexMonth" type="number" value="2" min="1"></div>
+          <div class="row"><label>Depreciation (yrs)</label><input id="deprY" type="number" value="7" min="1"></div>
+          <div class="row"><label>Residual (% of CapEx)</label><input id="residPct" type="number" value="10" min="0" step="1"></div>
+        </div>
+        <div class="row"><label>Grant on vessel CapEx (%)</label><input id="capexGrantPct" type="number" value="0" step="1"></div>
+
+        <div class="hr"></div>
+        <div class="row"><label>Pricing mode</label>
+          <select id="pricingMode">
+            <option value="perTrip">Per trip</option>
+            <option value="perKm">Per km</option>
+            <option value="subscription">Monthly subscription</option>
+          </select>
+        </div>
+        <div class="two">
+          <div class="row"><label>Price per trip / km / sub</label><input id="price" type="number" value="180"></div>
+          <div class="row"><label>Revenue share to client (%)</label><input id="revSharePct" type="number" value="0"></div>
+        </div>
+        <div class="two">
+          <div class="row"><label>Avg trip distance (km)</label><input id="kmPerTrip" type="number" value="8"></div>
+          <div class="row"><label>Avg speed (km/h)</label><input id="speed" type="number" value="10"></div>
+        </div>
+        <div class="two">
+          <div class="row"><label>Turn/dock time per trip (h)</label><input id="turnH" type="number" value="0.4" step="0.1"></div>
+          <div class="row"><label>Operating hrs/day</label><input id="hrsDay" type="number" value="10"></div>
+        </div>
+        <div class="two">
+          <div class="row"><label>Days / month</label><input id="daysMonth" type="number" value="22"></div>
+          <div class="row"><label>Utilization (%)</label><input id="utilPct" type="number" value="70"></div>
+        </div>
+        <div class="row"><label>Data/monitoring revenue per vessel / month</label><input id="dataRev" type="number" value="500"></div>
+
+        <div class="hr"></div>
+        <div class="row"><label>Energy per km (kWh)</label><input id="kwhPerKm" type="number" value="8" step="0.1"></div>
+        <div class="two">
+          <div class="row"><label>Energy price (€/kWh)</label><input id="priceKwh" type="number" value="0.25" step="0.01"></div>
+          <div class="row"><label>Maintenance per km</label><input id="maintPerKm" type="number" value="0.50" step="0.1"></div>
+        </div>
+        <div class="row"><label>Telecom & cloud per vessel / month</label><input id="telPerV" type="number" value="150"></div>
+        <div class="row"><label>Insurance per vessel / month</label><input id="insPerV" type="number" value="200"></div>
+        <div class="two">
+          <div class="row"><label>Remote operators per vessel</label><input id="opsPerV" type="number" value="0.3" step="0.1"></div>
+          <div class="row"><label>Operator cost / month</label><input id="opCost" type="number" value="4000"></div>
+        </div>
+        <div class="two">
+          <div class="row"><label>Command center / month</label><input id="ccCost" type="number" value="2500"></div>
+          <div class="row"><label>Overhead / month</label><input id="ohCost" type="number" value="2000"></div>
+        </div>
+
+        <!-- Additional CapEx and Opex fields -->
+        <div class="row"><label>Infrastructure CapEx (one-off)</label><input id="capexInfra" type="number" value="0" step="1000"></div>
+        <div class="row"><label>Data &amp; AI CapEx (one-off)</label><input id="capexDataAi" type="number" value="0" step="1000"></div>
+        <div class="row"><label>Control &amp; admin CapEx (one-off)</label><input id="capexControl" type="number" value="0" step="1000"></div>
+        <div class="row"><label>Data &amp; AI Opex per month</label><input id="dataAiOpex" type="number" value="0" step="100"></div>
+        <div class="row"><label>Docking &amp; port fee per vessel / month</label><input id="dockingFee" type="number" value="0" step="50"></div>
+        <div class="row"><label>Training revenue per month</label><input id="trainRev" type="number" value="0" step="100"></div>
+
+        <div class="hr"></div>
+        <div class="btnbar">
+          <button class="primary" id="runBtn">Run model</button>
+          <button class="ghost" id="pilotBtn">Preset: Pilot (1 vessel)</button>
+          <button class="ghost" id="scaleBtn">Preset: Scale (5 vessels)</button>
+          <button class="ghost" id="rndBtn">Preset: R&amp;D only</button>
+          <button id="exportBtn">Export scenario JSON</button>
+          <button id="shareBtn">Share link</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Outputs -->
+    <div class="card">
+      <h3>Outputs</h3>
+      <div class="body">
+        <div class="kpis">
+          <div class="kpi">
+            <div class="label">Payback (months)</div>
+            <div class="val mono" id="payback">—</div>
+          </div>
+          <div class="kpi">
+            <div class="label">NPV (annual r)</div>
+            <div class="val mono" id="npv">—</div>
+          </div>
+          <div class="kpi">
+            <div class="label">IRR (annual)</div>
+            <div class="val mono" id="irr">—</div>
+          </div>
+          <div class="kpi">
+            <div class="label">Month-12 EBITDA margin</div>
+            <div class="val mono" id="m12margin">—</div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+        <div class="charts">
+          <div class="card">
+            <h3>Monthly cashflow</h3>
+            <div class="body"><canvas id="cfChart" height="160"></canvas></div>
+          </div>
+          <div class="card">
+            <h3>Cumulative cash (payback)</h3>
+            <div class="body"><canvas id="cumChart" height="160"></canvas></div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+        <div class="two">
+          <div class="card">
+            <h3>Revenue & cost mix (Month-12)</h3>
+            <div class="body"><canvas id="mixChart" height="160"></canvas></div>
+          </div>
+          <div class="card">
+            <h3>1-way sensitivity (Δ10%)</h3>
+            <div class="body">
+              <div class="note">Impact on NPV from ±10% change:
+                <ul id="sensList" style="margin:6px 0 0 16px; padding:0;"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+        <div class="note">
+          <span class="pill">How it works</span> The model computes trips per month per vessel from distance, speed and turn‑time, applies utilization, and prices by trip/km/subscription (minus revenue share). Revenue includes Freight‑as‑a‑Service delivery plus any training income entered. Opex includes energy, maintenance, telecom, insurance, remote ops, command center, overhead, optional Data &amp; AI operating costs and per‑vessel docking/port fees. R&amp;D and vessel CapEx (net of grants) hit cash when scheduled; additional infrastructure, Data &amp; AI and control/admin CapEx are treated as one‑time expenses in month 1; depreciation is non‑cash. KPIs: NPV/IRR based on monthly cash, EBITDA margin from Month‑12 run‑rate, payback when cumulative cash turns positive.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="note">
+      <strong>Defaults & context.</strong> R&amp;D “Phase-1 Step-1” default of €68k, Ghent waterway context (inner-city calm waters, 4G/5G CC), two AVATAR vessel sizes, and Vetus BowPro thrusters + 0–5V integration are drawn from your shared proposal and emails. Adjust anything above to fit current quotes and field data.
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+/*** Utilities ***/
+const fmtCcy = (x, ccy='€') => ccy + (x>=0? '' : '-') + Math.abs(x).toLocaleString(undefined,{maximumFractionDigits:0});
+const pct = (x) => (isFinite(x)? (x*100).toFixed(1)+'%' : '—');
+const clamp = (v, lo, hi)=>Math.max(lo, Math.min(hi, v));
+
+/*** Read inputs ***/
+function getInputs(){
+  const g = id => document.getElementById(id).value;
+  const num = id => parseFloat(g(id))||0;
+  return {
+    ccy: g('ccy') || '€',
+    months: Math.max(6, parseInt(g('months')||36,10)),
+    discA: num('disc')/100,
+    rnd: num('rnd'),
+    rndMonth: Math.max(1, parseInt(g('rndMonth')||1,10)),
+    rndGrantPct: num('rndGrantPct')/100,
+    fleet: Math.max(0, parseInt(g('fleet')||0,10)),
+    capexV: num('capexV'),
+    capexMonth: Math.max(1, parseInt(g('capexMonth')||2,10)),
+    deprY: Math.max(1, parseInt(g('deprY')||7,10)),
+    residPct: num('residPct')/100,
+    capexGrantPct: num('capexGrantPct')/100,
+    pricingMode: document.getElementById('pricingMode').value,
+    price: num('price'),
+    revSharePct: num('revSharePct')/100,
+    kmPerTrip: Math.max(0.01, num('kmPerTrip')),
+    speed: Math.max(0.1, num('speed')),
+    turnH: Math.max(0, num('turnH')),
+    hrsDay: Math.max(0.1, num('hrsDay')),
+    daysMonth: Math.max(1, parseInt(g('daysMonth')||22,10)),
+    utilPct: num('utilPct')/100,
+    dataRev: num('dataRev'),
+    kwhPerKm: num('kwhPerKm'),
+    priceKwh: num('priceKwh'),
+    maintPerKm: num('maintPerKm'),
+    telPerV: num('telPerV'),
+    insPerV: num('insPerV'),
+    opsPerV: num('opsPerV'),
+    opCost: num('opCost'),
+    ccCost: num('ccCost'),
+    ohCost: num('ohCost'),
+    capexInfra: num('capexInfra'),
+    capexDataAi: num('capexDataAi'),
+    capexControl: num('capexControl'),
+    dataAiOpex: num('dataAiOpex'),
+    dockingFee: num('dockingFee'),
+    trainRev: num('trainRev'),
+  }
+}
+
+/*** Model ***/
+function computeSchedule(p){
+  const m = p.months;
+  const months = Array.from({length:m}, (_,i)=>i+1);
+
+  // Activity
+  const tripTimeH = (p.kmPerTrip / p.speed) + p.turnH; // hours per trip
+  const tripsPerDay = (p.hrsDay / tripTimeH) * p.utilPct;
+  const tripsPerMonthPerV = tripsPerDay * p.daysMonth;
+
+  // Unit revenues
+  let revPerTrip = 0, revPerMonthPerV = 0;
+  if(p.pricingMode === 'perTrip'){
+    revPerTrip = p.price * (1 - p.revSharePct);
+    revPerMonthPerV = tripsPerMonthPerV * revPerTrip + p.dataRev;
+  } else if(p.pricingMode === 'perKm') {
+    revPerTrip = p.price * p.kmPerTrip * (1 - p.revSharePct);
+    revPerMonthPerV = tripsPerMonthPerV * revPerTrip + p.dataRev;
+  } else { // subscription
+    revPerMonthPerV = p.price * (1 - p.revSharePct) + p.dataRev;
+  }
+
+  // Variable costs per trip
+  const energyPerTrip = p.kwhPerKm * p.kmPerTrip * p.priceKwh;
+  const maintPerTrip = p.maintPerKm * p.kmPerTrip;
+  const varPerTrip = energyPerTrip + maintPerTrip;
+  const varPerMonthPerV = (p.pricingMode==='subscription' ? 0 : tripsPerMonthPerV * varPerTrip);
+
+  // Fixed per vessel per month
+  const opsPerVMonth = p.opsPerV * p.opCost;
+  const fixedPerVMonth = p.telPerV + p.insPerV + opsPerVMonth;
+
+  // Capex and depreciation
+  const deprM = p.deprY * 12;
+  const depPerVPerMonth = (p.capexV * (1 - p.residPct)) / deprM;
+
+  // Streams
+  // Include per-month training revenue (trainRev) once per month (not per vessel).  
+  // Revenue per month = revenue from FAAS services + training revenue.
+  const revenue = months.map(() => p.fleet * revPerMonthPerV + p.trainRev);
+  // Opex per month includes variable & fixed per vessel plus command center, overhead, Data & AI Opex, and docking fee per vessel.
+  const opex = months.map(() => {
+    // variable and fixed per vessel: varPerMonthPerV + fixedPerVMonth
+    const vesselCosts = (varPerMonthPerV + fixedPerVMonth + p.dockingFee) * p.fleet;
+    // global opex: command center, overhead, Data & AI Opex
+    return vesselCosts + p.ccCost + p.ohCost + p.dataAiOpex;
+  });
+
+  const capex = months.map(() => 0);
+  // R&D one-off
+  const rndNet = p.rnd * (1 - p.rndGrantPct);
+  if(p.rndMonth >=1 && p.rndMonth <= m) capex[p.rndMonth-1] += rndNet;
+  // Vessel CapEx one-off
+  const capexVNet = p.capexV * (1 - p.capexGrantPct);
+  if(p.capexMonth >=1 && p.capexMonth <= m) capex[p.capexMonth-1] += p.fleet * capexVNet;
+  // Additional CapEx: infrastructure, Data & AI, control & admin (one-off at first month). These are treated as one-time expenditures at month 1.
+  if(m >= 1) {
+    capex[0] += (p.capexInfra || 0);
+    capex[0] += (p.capexDataAi || 0);
+    capex[0] += (p.capexControl || 0);
+  }
+
+  const cash = months.map(i => revenue[i-1] - opex[i-1] - capex[i-1]);
+  const cum = months.map((_,i)=> cash.slice(0,i+1).reduce((a,b)=>a+b,0));
+
+  // EBITDA Month-12
+  const idx12 = Math.min(12, m)-1;
+  const ebitda12 = revenue[idx12] - opex[idx12]; // dep ignored
+  const margin12 = ebitda12 / Math.max(1, revenue[idx12]);
+
+  // Payback month
+  let paybackMonth = '—';
+  for(let i=0;i<m;i++){ if(cum[i] >= 0){ paybackMonth = (i+1); break; } }
+
+  // NPV, IRR
+  const r_m = Math.pow(1+p.discA, 1/12)-1;
+  const npv = cash.reduce((acc, cf, i)=>{
+    return acc + cf/Math.pow(1+r_m, i+1);
+  }, 0);
+
+  function irrMonthly(flows){
+    // Bisection
+    let lo=-0.95, hi=1.0;
+    const f = (r)=> flows.reduce((a,cf,i)=> a + cf/Math.pow(1+r, i+1), 0);
+    let flo=f(lo), fhi=f(hi);
+    if(isNaN(flo) || isNaN(fhi)) return NaN;
+    for(let iter=0;iter<100;iter++){
+      const mid = (lo+hi)/2, fm = f(mid);
+      if(Math.abs(fm) < 1e-6) return mid;
+      if(fm * flo > 0){ lo=mid; flo=fm; } else { hi=mid; fhi=fm; }
+    }
+    return (lo+hi)/2;
+  }
+  const irr_m = irrMonthly(cash);
+  const irrA = isFinite(irr_m) ? (Math.pow(1+irr_m,12)-1) : NaN;
+
+  return {
+    months, revenue, opex, capex, cash, cum,
+    paybackMonth, npv, irrA, margin12,
+    mix12:{
+      revenue: revenue[idx12]||0,
+      variable: (p.fleet*varPerMonthPerV)||0,
+      fixedV: (p.fleet*fixedPerVMonth)||0,
+      overhead: (p.ccCost+p.ohCost)||0
+    },
+    meta:{tripsPerMonthPerV, revPerTrip, varPerTrip}
+  };
+}
+
+/*** Sensitivity (±10%) ***/
+function sensitivity(baseInputs){
+  const base = computeSchedule(baseInputs);
+  const baseNPV = base.npv;
+
+  function delta(label, mutate){
+    const i2 = JSON.parse(JSON.stringify(baseInputs));
+    mutate(i2);
+    const npv2 = computeSchedule(i2).npv;
+    return {label, impact: npv2 - baseNPV};
+  }
+
+  return [
+    delta('Price', i=> i.price *= 1.10),
+    delta('Utilization', i=> i.utilPct = clamp(i.utilPct*1.10,0,1)),
+    delta('Fleet size', i=> i.fleet = Math.max(0, Math.round(i.fleet*1.10))),
+    delta('Energy price', i=> i.priceKwh *= 1.10),
+    delta('CapEx per vessel', i=> i.capexV*=1.10),
+    delta('Remote ops cost', i=> i.opCost*=1.10),
+  ].filter(Boolean).map(x=>({label:x.label, impact:x.impact}));
+}
+
+/*** Charts ***/
+let cfChart, cumChart, mixChart;
+function renderCharts(p, out){
+  const labels = out.months.map(m=>'M'+m);
+  const c1 = document.getElementById('cfChart').getContext('2d');
+  const c2 = document.getElementById('cumChart').getContext('2d');
+  const c3 = document.getElementById('mixChart').getContext('2d');
+
+  cfChart && cfChart.destroy();
+  cumChart && cumChart.destroy();
+  mixChart && mixChart.destroy();
+
+  cfChart = new Chart(c1,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Revenue', data: out.revenue, backgroundColor:'rgba(108,192,255,0.6)'},
+        {label:'Opex', data: out.opex.map(x=>-x), backgroundColor:'rgba(255,111,111,0.5)'},
+        {label:'CapEx', data: out.capex.map(x=>-x), backgroundColor:'rgba(159,108,255,0.45)'},
+        {label:'Net cash', data: out.cash, type:'line', borderColor:'#fff', borderWidth:2, fill:false}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{labels:{color:'#bcd'}}}, scales:{x:{ticks:{color:'#9fb0ff'}},y:{ticks:{color:'#9fb0ff'}}}}
+  });
+
+  cumChart = new Chart(c2,{
+    type:'line',
+    data:{labels, datasets:[{label:'Cumulative', data: out.cum, borderColor:'#11c46a', borderWidth:2, fill:false}]},
+    options:{responsive:true,plugins:{legend:{labels:{color:'#bcd'}}},scales:{x:{ticks:{color:'#9fb0ff'}},y:{ticks:{color:'#9fb0ff'}}}}
+  });
+
+  mixChart = new Chart(c3,{
+    type:'bar',
+    data:{
+      labels:['Revenue','Variable','Fixed-Vessel','Overhead'],
+      datasets:[{data:[out.mix12.revenue, out.mix12.variable, out.mix12.fixedV, out.mix12.overhead],
+                 backgroundColor:['#6cf','#ff9494','#b299ff','#8fb6ff']}]
+    },
+    options:{plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#9fb0ff'}},y:{ticks:{color:'#9fb0ff'}}}}
+  });
+}
+
+/*** Update UI ***/
+function run(){
+  const p = getInputs();
+  const out = computeSchedule(p);
+
+  // KPIs
+  const sign = x => x>=0? 'good':'bad';
+  document.getElementById('payback').textContent = out.paybackMonth;
+  document.getElementById('npv').innerHTML = `<span class="${sign(out.npv)}">`+fmtCcy(out.npv, p.ccy)+`</span>`;
+  const irrView = isFinite(out.irrA) ? (out.irrA*100).toFixed(1)+'%' : '—';
+  document.getElementById('irr').innerHTML = `<span class="${sign(out.irrA)}">`+irrView+`</span>`;
+  document.getElementById('m12margin').innerHTML = `<span class="${sign(out.margin12)}">`+pct(out.margin12)+`</span>`;
+
+  renderCharts(p, out);
+
+  // Sensitivity list
+  const sens = sensitivity(p);
+  const ul = document.getElementById('sensList');
+  ul.innerHTML = '';
+  sens.forEach(s=>{
+    const li = document.createElement('li');
+    li.className='mono';
+    li.style.margin='4px 0';
+    li.innerHTML = `${s.label}: <strong class="${s.impact>=0?'good':'bad'}">${fmtCcy(s.impact, p.ccy)}</strong>`;
+    ul.appendChild(li);
+  });
+}
+
+/*** Presets ***/
+document.getElementById('pilotBtn').onclick = ()=>{
+  document.getElementById('fleet').value = 1;
+  document.getElementById('capexV').value = 300000;
+  document.getElementById('utilPct').value = 70;
+  document.getElementById('price').value = 180;
+  document.getElementById('pricingMode').value = 'perTrip';
+  run();
+};
+document.getElementById('scaleBtn').onclick = ()=>{
+  document.getElementById('fleet').value = 5;
+  document.getElementById('capexV').value = 280000;
+  document.getElementById('utilPct').value = 75;
+  document.getElementById('price').value = 175;
+  document.getElementById('opsPerV').value = 0.2;
+  run();
+};
+document.getElementById('rndBtn').onclick = ()=>{
+  document.getElementById('fleet').value = 0;
+  document.getElementById('rnd').value = 68000;
+  document.getElementById('rndMonth').value = 1;
+  run();
+};
+
+document.getElementById('runBtn').onclick = run;
+
+/*** Export / Share ***/
+document.getElementById('exportBtn').onclick = ()=>{
+  const p = getInputs();
+  const blob = new Blob([JSON.stringify(p,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'uwl_faas_scenario.json'; a.click();
+  URL.revokeObjectURL(url);
+};
+document.getElementById('shareBtn').onclick = ()=>{
+  const p = getInputs();
+  const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(p)))));
+  const shareUrl = location.origin + location.pathname + '#s=' + encoded;
+  navigator.clipboard.writeText(shareUrl).then(()=>alert('Share link copied to clipboard.'));
+};
+
+// Automatically recompute results when any input or select changes. This allows users to see updated results
+// without manually clicking the "Run model" button. It listens to both change and input events for
+// all relevant input and select elements, excluding button types.
+document.querySelectorAll('.card .body input, .card .body select').forEach(el => {
+  // Skip button-like inputs
+  const type = (el.type || '').toLowerCase();
+  if (type === 'button' || type === 'submit' || type === 'reset') return;
+  el.addEventListener('change', () => run());
+  el.addEventListener('input', () => run());
+});
+
+// Load shared state if present
+(function initFromHash(){
+  const h = location.hash;
+  if(h.startsWith('#s=')){
+    try{
+      const decoded = JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(h.slice(3))))));
+      for(const k in decoded){
+        const el = document.getElementById(k);
+        if(el){ el.value = decoded[k]; }
+      }
+    }catch(e){}
+  }
+  run();
+})();
+</script>
+</body>
+</html>
